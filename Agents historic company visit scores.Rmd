@@ -1,0 +1,231 @@
+---
+title: "Agents historic company visit scores"
+author: Azeez Akintonde
+date: "2024-04-15"
+
+output:
+  pdf_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+The goal of this analysis is to explore the historic company visit scores collected by the Bank of England's Agents from 2009-2020. We'll load the dataset, perform data analysis, and generate visualizations to gain insights into sector performance over time.
+
+# Task 1
+
+## Load Libraries and Dataset
+
+```{r Libraries}
+# Load libraries
+library(readxl)
+library(ggplot2)
+```
+
+```{r Importation, message=TRUE, warning=FALSE, paged.print=TRUE}
+# Set directories
+data_dir <- "C:/Users/Kintonde/Documents/VSCODE/Agents-historic-company-visit-scores"
+setwd(data_dir)
+
+# dataset to be use
+library(readxl)
+df <- read_excel("C:/Users/Kintonde/Desktop/Byblos/banford/hmd/Agents historic company visit scores.xlsx", 
+    sheet = "DATASET")
+head(df)
+```
+
+# Data Exploration
+
+```{r Inspect dataset, message=TRUE}
+# calculate the total number of columns
+num_columns <- ncol(df)
+
+# calculate the total number of Observations
+num_observations <- nrow(df)
+cat("There are",
+    num_columns,
+    "columns and",
+    num_observations,
+    "observations.\n")
+```
+
+```{r Data structure}
+# Check the datset structure
+str(df)
+```
+
+```{r Data Layout}
+# Print the head of the dataset
+head(df)
+```
+
+# Task 2
+
+identify all companies whose Investment Score and Employment Score are both positive – store the company IDs in a vector and display them effectively.
+
+```{r Data-filter}
+# Filter companies with positive Investment and Employment Scores
+comp_positive_score <-
+  subset(df, InvestmentScore > 0 & EmploymentScore > 0)
+
+# calculate the total number of columns
+fil_columns <- ncol(comp_positive_score)
+
+# calculate the total number of Observations
+fil_observations <- nrow(comp_positive_score)
+cat("There are",
+    fil_columns,
+    "columns and",
+    fil_observations,
+    "observations after Filtering the positive Investment and Employment Scores.\n")
+```
+
+# Task 3
+
+Add a column to your data frame to indicate the Category of each company. You should refer to the SIC column to determine the category of the company. The name of the new column should be “Category” and the data type of the column should be character
+
+```{r Rename}
+# rename the Sector column to Category
+colnames(comp_positive_score)[colnames(comp_positive_score) == "Sector"] <-
+  "Category"
+# print the data structure
+str(comp_positive_score)
+```
+
+```{r SIC function}
+# Function to map categories to SIC codes
+SIC <- function(category) {
+  switch(
+    category,
+    "Production" = "A, B, C, D, E, F",
+    "Business and financial services" = "K, L, M, N",
+    "Transport, storage and communications" = "H, J",
+    "Distribution, hotels, catering, arts, entertainment, recreation and other services" = "G, I, R, S",
+    "Unknown"
+  )}
+```
+
+```{r}
+# Create 'Potential_SICs' column based on SIC codes using the using the respective category 
+comp_positive_score$Potential_SICs <-
+  sapply(comp_positive_score$Category, SIC)
+# print the data structure 
+str(comp_positive_score)
+```
+
+```{r Year Extraction}
+# Extract year from 'ActualDateDisplay' and create 'Year' column
+comp_positive_score$Year <- substr(
+  comp_positive_score$ActualDateDisplay,
+  nchar(comp_positive_score$ActualDateDisplay) - 3,
+  nchar(comp_positive_score$ActualDateDisplay))
+
+# print the data structure 
+str(comp_positive_score)
+```
+
+```{r Aggregation}
+# Aggregate data to calculate average scores by Category and Year
+Avg_score <- aggregate(
+  cbind(
+    Avg_InvestmentScore = InvestmentScore,
+    Avg_EmploymentScore = EmploymentScore
+  ) ~ Category
+  + Year,
+  data = comp_positive_score,
+  FUN = mean,
+  na.rm = TRUE)
+# print the aggregated dataset
+head(Avg_score)
+```
+
+```{r Data Filter}
+
+# calculate the total number of columns in the Aggregated Avg_Score dataset
+fil_columns <- ncol(Avg_score)
+
+# calculate the total number of Observations
+fil_observations <- nrow(Avg_score)
+cat("There are",
+    fil_columns,
+    "columns and",
+    fil_observations,
+    "observations in the Avg_score dataset.\n")
+```
+
+```{r Avg_score dataset structure}
+# print the dataset stucture
+str(Avg_score)
+```
+
+# Task 4
+
+Generate two visualisations/charts based on information from the dataset.
+
+## Data Visualization
+
+```{r heatmap for Average Investment Score, fig.height=6, fig.width=15}
+# Create heatmap for Average Investment Score
+ggplot(data = Avg_score, aes(x = Year, y = Category,
+                             fill = Avg_InvestmentScore)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "lightyellow",# set lightyellow for the low values
+                      high = "darkgreen", # set darkgreen fro the high values
+                      name = "Average Investment Score") +
+  labs(title = "Average Investment Score by Sector and Year",
+       x = "Year", y = "Sector") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 14),  # Adjust size as desired
+        axis.text.y = element_text(size = 12),  # Adjust size as desired
+        legend.position = "right")
+
+```
+
+```{r heatmap for Average Employment Score, fig.height=6, fig.width=15}
+# Create heatmap for Average Employment Score
+ggplot(data = Avg_score, aes(x = Year, y = Category, fill = Avg_EmploymentScore)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "lightyellow",# set lightyellow for the low values
+                      high = "darkgreen",  # set darkgreen fro the high values
+                      name = "Average Employment Score") +
+  labs(title = "Average Employment Score by Sector and Year",
+       x = "Year", y = "Sector") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 14),  # Adjust size as desired
+        axis.text.y = element_text(size = 12),  # Adjust size as desired
+        legend.position = "right")
+```
+
+### Year-on-Year Analysis of Investment and Employment Trends Across Sectors
+
+#### Investment Score:
+
+The analysis examines the fluctuation of average investment scores across various sectors from 2008 to 2020, utilizing data collected by the Bank of England's Agents. Notably, the Transportation, storage, and communications sector consistently exhibited the highest average investment score throughout the period, peaking at approximately 3.0 in 2008 before declining to around 2.6 in 2012.
+
+-   **Transportation, Storage, and Communications:** This sector demonstrated a sustained high average investment score, indicating relative stability in investment activity.
+-   **Production:** Despite fluctuations, investment scores remained relatively robust, particularly evident in 2008 and 2012.
+-   **Distribution, Hospitality, Arts, Entertainment, and Other Services:** Consistently, this sector registered the lowest average investment scores, ranging between 2.2 and 2.4.
+-   **Business and Financial Services:** Similar to the distribution sector, investment scores fluctuated within a narrow range between 2.2 and 2.4, with a slight upward trend observed from 2018 to 2020.
+
+#### Employment Score:
+
+In parallel, employment trends across sectors depicted varying patterns over the same period.
+
+-   **Transportation, Storage, and Communications:** This sector consistently maintained a high average employment score, indicating relative stability in employment levels compared to other sectors.
+-   **Production:** Employment in the production sector exhibited greater volatility, likely reflecting the influence of economic fluctuations such as the 2008 recession.
+-   **Distribution, Hospitality, Arts, Entertainment, and Other Services:** While initially low, there was a discernible upward trend in employment scores from 2018 to 2020, suggesting potential growth in these sectors.
+-   **Business and Financial Services:** Employment trends mirrored those of the distribution sector, with marginal increases observed in later years.
+
+### Conclusion:
+
+The analysis provides valuable insights into investment and employment dynamics across sectors over the specified period. While certain sectors consistently outperformed others in terms of investment and employment, the observed fluctuations underscore the influence of economic factors on industry-specific trends.
+
+### Limitations:
+
+-   **Data Availability:** The analysis relies on data collected by the Bank of England's Agents, which may have limitations in terms of coverage and granularity.
+-   **Sector Classification:** The broad categorization of sectors may oversimplify the analysis, potentially masking nuanced variations within industries.
+-   **Economic Context:** External economic factors, such as global economic conditions and government policies, were not explicitly considered in the analysis, which may impact the interpretation of trends.
